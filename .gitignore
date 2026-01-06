@@ -1,0 +1,12 @@
+# Terraform local dirs (downloaded providers/modules)
+**/.terraform/
+
+# Terraform state (jangan commit)
+*.tfstate
+*.tfstate.*
+
+# Variable files (selalunya ada secrets)
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
