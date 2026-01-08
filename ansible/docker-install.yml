@@ -1,0 +1,20 @@
+- name: Install Docker on web and monitoring
+  hosts: web,monitoring
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install Docker (Ubuntu repo)
+      ansible.builtin.apt:
+        name:
+          - docker.io
+        state: present
+
+    - name: Enable and start Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
