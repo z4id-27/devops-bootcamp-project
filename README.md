@@ -283,13 +283,13 @@ curl https://web.zaidzahir.com
 
 All EC2 instances accessible via SSM Session Manager:
 
-# Web Server
+## Web Server
 aws ssm start-session --target i-xxxxxxxxx
 
-# Ansible Controller
+## Ansible Controller
 aws ssm start-session --target i-xxxxxxxxx
 
-# Monitoring Server
+## Monitoring Server
 aws ssm start-session --target i-xxxxxxxxx
 
 ---
@@ -323,7 +323,7 @@ ssh -i ~/.ssh/my-key.pem ubuntu@10.0.0.136
 ---
 
 ## 📁 Repository Structure
-
+```
 devops-bootcamp-project/
 ├── .github/
 │   └── workflows/
@@ -346,7 +346,7 @@ devops-bootcamp-project/
 │   ├── outputs.tf              # Terraform outputs
 │   └── variables.tf            # Input variables
 └── README.md                   # This documentation
-
+```
 ---
 
 
