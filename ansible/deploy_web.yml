@@ -1,0 +1,41 @@
+---
+- name: Deploy Web Application
+  hosts: web
+  become: yes
+  tasks:
+    - name: Ensure lab-final-project directory exists
+      file:
+        path: /home/ubuntu/lab-final-project
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Log in to AWS ECR
+      shell: |
+        aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin {{ ecr_registry }}
+      become_user: ubuntu
+      vars:
+        ecr_registry: "YOUR_AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com"
+
+    - name: Pull latest image from ECR
+      docker_image:
+        name: "{{ ecr_registry }}/web-app"
+        tag: latest
+        source: pull
+      vars:
+        ecr_registry: "YOUR_AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com"
+
+    - name: Start web application
+      shell: |
+        cd /home/ubuntu/lab-final-project
+        docker-compose up -d
+      become_user: ubuntu
+
+    - name: Install node exporter for monitoring
+      docker_container:
+        name: node-exporter
+        image: prom/node-exporter:latest
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "9100:9100"
