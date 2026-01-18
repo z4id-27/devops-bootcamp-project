@@ -1,0 +1,59 @@
+---
+- name: Deploy Monitoring Stack
+  hosts: monitoring
+  become: yes
+  tasks:
+    - name: Create monitoring directory
+      file:
+        path: /home/ubuntu/monitoring
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Copy prometheus config
+      copy:
+        src: prometheus.yml
+        dest: /home/ubuntu/monitoring/prometheus.yml
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Create docker-compose file for monitoring
+      copy:
+        dest: /home/ubuntu/monitoring/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        content: |
+          version: '3.8'
+          services:
+            prometheus:
+              image: prom/prometheus:latest
+              container_name: prometheus
+              ports:
+                - "9090:9090"
+              volumes:
+                - ./prometheus.yml:/etc/prometheus/prometheus.yml
+                - prometheus-data:/prometheus
+              command:
+                - '--config.file=/etc/prometheus/prometheus.yml'
+              restart: unless-stopped
+
+            grafana:
+              image: grafana/grafana:latest
+              container_name: grafana
+              ports:
+                - "3000:3000"
+              volumes:
+                - grafana-data:/var/lib/grafana
+              environment:
+                - GF_SECURITY_ADMIN_PASSWORD=admin
+              restart: unless-stopped
+
+          volumes:
+            prometheus-data:
+            grafana-data:
+
+    - name: Start monitoring services
+      shell: |
+        cd /home/ubuntu/monitoring
+        docker-compose up -d
+      become_user: ubuntu
