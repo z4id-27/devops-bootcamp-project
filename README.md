@@ -10,17 +10,6 @@
 
 ---
 
-## 📋 Table of Contents
-
-- [Project Overview](#project-overview)
-- [Architecture](#architecture)
-- [Infrastructure Components](#infrastructure-components)
-- [Deployment Guide](#deployment-guide)
-- [Monitoring](#monitoring)
-- [Access & Credentials](#access--credentials)
-- [Technologies Used](#technologies-used)
-
----
 
 ## 🎯 Project Overview
 
@@ -36,38 +25,13 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 ---
 
 ## 🏗️ Architecture
-```
-### Network Architecture
 
-┌─────────────────────────────────────────────────────────────┐
-│ VPC: 10.0.0.0/24 │
-│ │
-│ ┌──────────────────────┐ ┌────────────────────────┐ │
-│ │ Public Subnet │ │ Private Subnet │ │
-│ │ 10.0.0.0/25 │ │ 10.0.0.128/25 │ │
-│ │ │ │ │ │
-│ │ ┌───────────────┐ │ │ ┌─────────────────┐ │ │
-│ │ │ Web Server │ │ │ │ Ansible │ │ │
-│ │ │ 10.0.0.5 │ │ │ │ Controller │ │ │
-│ │ │ (Public IP) │ │ │ │ 10.0.0.135 │ │ │
-│ │ └───────────────┘ │ │ └─────────────────┘ │ │
-│ │ │ │ │ │
-│ │ │ │ ┌─────────────────┐ │ │
-│ │ │ │ │ Monitoring │ │ │
-│ │ │ │ │ Server │ │ │
-│ └──────────────────────┘ │ │ 10.0.0.136 │ │ │
-│ │ │ └─────────────────┘ │ │
-│ │ │ │ │ │
-│ ┌──────▼──────┐ │ ┌─────▼──────┐ │ │
-│ │ Internet │ │ │ NAT │ │ │
-│ │ Gateway │ │ │ Gateway │ │ │
-│ └─────────────┘ │ └────────────┘ │ │
-└───────────┬───────────────────┴───────────────────────┘ │
-│
-┌─────▼─────┐
-│ Internet │
-└───────────┘
-```
+### Network Topology
+
+**VPC Configuration:**
+- VPC CIDR: `10.0.0.0/24`
+- Public Subnet: `10.0.0.0/25`
+- Private Subnet: `10.0.0.128/25`
 
 ### Component Overview
 
@@ -76,6 +40,11 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 | **Web Server** | Public | 10.0.0.5 | ✅ Elastic IP | Host web application |
 | **Ansible Controller** | Private | 10.0.0.135 | ❌ SSM only | Configuration management |
 | **Monitoring Server** | Private | 10.0.0.136 | ❌ Cloudflare Tunnel | Prometheus & Grafana |
+
+**Traffic Flow:**
+1. **Internet → Web Server**: Via Internet Gateway + Elastic IP
+2. **Private Servers → Internet**: Via NAT Gateway
+3. **Monitoring → Web Server**: Internal VPC routing
 
 ---
 
@@ -128,50 +97,46 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 | `deploy_monitor.yml` | Deploy Prometheus & Grafana |
 
 **Inventory Structure:**
-```ini
+
 [web]
 10.0.0.5
 
 [monitoring]
 10.0.0.136
-```
 
+---
 
-3. Containerized Services
-Web Application
-Image: Stored in AWS ECR
+### 3. Containerized Services
 
-Port: 80
+#### Web Application
+- **Image**: Stored in AWS ECR
+- **Port**: 80
+- **Source**: https://github.com/Infratify/lab-final-project
+- **Deployment**: Docker container via Ansible
 
-Source: https://github.com/Infratify/lab-final-project
+#### Monitoring Stack
+- **Prometheus**: Port 9090 (internal)
+- **Grafana**: Port 3000 (via Cloudflare Tunnel)
+- **Node Exporter**: Port 9100 (Web Server)
 
-Deployment: Docker container via Ansible
+---
 
-Monitoring Stack
-Prometheus: Port 9090 (internal)
+## 🚀 Deployment Guide
 
-Grafana: Port 3000 (via Cloudflare Tunnel)
+### Prerequisites
 
-Node Exporter: Port 9100 (Web Server)
+- AWS Account with appropriate IAM permissions
+- Terraform >= 1.0
+- Ansible >= 2.9
+- Domain registered with Cloudflare
+- GitHub account
 
-🚀 Deployment Guide
-Prerequisites
-AWS Account with appropriate IAM permissions
-
-Terraform >= 1.0
-
-Ansible >= 2.9
-
-Domain registered with Cloudflare
-
-GitHub account
-
-Step 1: Clone Repository
+### Step 1: Clone Repository
 
 git clone https://github.com/z4id-27/devops-bootcamp-project.git
 cd devops-bootcamp-project
 
-Step 2: Provision Infrastructure (Terraform)
+### Step 2: Provision Infrastructure (Terraform)
 
 cd terraform
 
@@ -184,21 +149,19 @@ terraform plan
 # Apply infrastructure
 terraform apply
 
-Resources Created:
+**Resources Created:**
 
-VPC with public/private subnets
+- VPC with public/private subnets
+- 3 EC2 instances
+- Security groups
+- ECR repository
+- Elastic IP
 
-3 EC2 instances
+---
 
-Security groups
+### Step 3: Configure Servers (Ansible)
 
-ECR repository
-
-Elastic IP
-
-Step 3: Configure Servers (Ansible)
 Access Ansible Controller via AWS SSM:
-
 
 aws ssm start-session --target i-xxxxxxxxx
 
@@ -215,8 +178,9 @@ ansible-playbook deploy_web.yml
 # Deploy monitoring stack
 ansible-playbook deploy_monitor.yml
 
+---
 
-Step 4: Build & Push Docker Image
+### Step 4: Build & Push Docker Image
 
 # Clone application source
 git clone https://github.com/Infratify/lab-final-project.git
@@ -226,104 +190,112 @@ cd lab-final-project
 docker build -t web-app .
 
 # Tag for ECR
-docker tag web-app:latest <ECR_URL>/web-app:latest
+docker tag web-app:latest <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/web-app:latest
 
 # Login to ECR
 aws ecr get-login-password --region ap-southeast-1 | \
-  docker login --username AWS --password-stdin <ECR_URL>
+  docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com
 
 # Push to ECR
-docker push <ECR_URL>/web-app:latest
+docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/web-app:latest
 
-Step 5: Configure Cloudflare
-DNS Records
+---
 
-| Type | Name | Target                  | Proxy     |
-| ---- | ---- | ----------------------- | --------- |
-| A    | web  | [Web Server Elastic IP] | ✅ Proxied |
+### Step 5: Configure Cloudflare
 
-Cloudflare Tunnel
-Create tunnel via Cloudflare Zero Trust
+#### DNS Records
 
-Configure public hostname: monitoring.zaidzahir.com → http://localhost:3000
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| A | web | [Web Server Elastic IP] | ✅ Proxied |
 
-Install cloudflared on Monitoring Server
+#### Cloudflare Tunnel
 
-Run tunnel with generated token
+1. Create tunnel via Cloudflare Zero Trust
+2. Configure public hostname: `monitoring.zaidzahir.com` → `http://localhost:3000`
+3. Install `cloudflared` on Monitoring Server
+4. Run tunnel with generated token
 
-sudo cloudflared tunnel run --token <token>
+sudo cloudflared tunnel run --token <your-tunnel-token>
 
+---
 
-Step 6: Verify Deployment
-Web Application:
+### Step 6: Verify Deployment
 
-curl http://web.zaidzahir.com
+**Web Application:**
 
-Monitoring Dashboard:
+curl https://web.zaidzahir.com
 
-Navigate to https://monitoring.zaidzahir.com
+**Monitoring Dashboard:**
 
-Login with Grafana credentials
+- Navigate to https://monitoring.zaidzahir.com
+- Login with Grafana credentials
 
-📊 Monitoring
-Prometheus Configuration
-Scrape Targets:
+---
 
-Prometheus self-monitoring (localhost:9090)
+## 📊 Monitoring
 
-Web Server Node Exporter (10.0.0.5:9100)
+### Prometheus Configuration
 
-Metrics Collected:
+**Scrape Targets:**
 
-CPU Usage
+- Prometheus self-monitoring (localhost:9090)
+- Web Server Node Exporter (10.0.0.5:9100)
 
-Memory Usage
+**Metrics Collected:**
 
-Disk Usage
+- CPU Usage
+- Memory Usage
+- Disk Usage
+- Network I/O
+- System Load
 
-Network I/O
+---
 
-System Load
+### Grafana Dashboards
 
-Grafana Dashboards
-Dashboard: Infrastructure Monitoring
+**Dashboard: Infrastructure Monitoring**
 
-Visualizations:
+**Visualizations:**
 
-CPU Usage (%) - Time series graph
+- CPU Usage (%) - Time series graph
+- Memory Usage (GB) - Gauge
+- Disk Usage (%) - Bar chart
+- Network Traffic - Area chart
 
-Memory Usage (GB) - Gauge
+**Data Source:** Prometheus (http://prometheus:9090)
 
-Disk Usage (%) - Bar chart
+**Refresh Interval:** 30 seconds
 
-Network Traffic - Area chart
+---
 
-Data Source: Prometheus (http://prometheus:9090)
+## 🔐 Access & Credentials
 
-Refresh Interval: 30 seconds
+### Grafana Access
 
+- **URL**: https://monitoring.zaidzahir.com
+- **Username**: `admin`
+- **Password**: `test0092`
 
-🔐 Access & Credentials
-Grafana Access
-URL: https://monitoring.zaidzahir.com
+---
 
-Username: admin
+### AWS Systems Manager (SSM)
 
-Password: test0092
-
-AWS Systems Manager (SSM)
 All EC2 instances accessible via SSM Session Manager:
 
 # Web Server
-aws ssm start-session --target i-web-server-id
+aws ssm start-session --target i-xxxxxxxxx
 
 # Ansible Controller
-aws ssm start-session --target i-ansible-id
+aws ssm start-session --target i-xxxxxxxxx
 
 # Monitoring Server
-aws ssm start-session --target i-monitoring-id
+aws ssm start-session --target i-xxxxxxxxx
 
-SSH Access (Internal)
+---
+
+### SSH Access (Internal)
+
 From Ansible Controller:
 
 # Web Server
@@ -332,22 +304,25 @@ ssh -i ~/.ssh/my-key.pem ubuntu@10.0.0.5
 # Monitoring Server
 ssh -i ~/.ssh/my-key.pem ubuntu@10.0.0.136
 
-🛠️ Technologies Used
+---
 
-| Category                 | Tools                              |
-| ------------------------ | ---------------------------------- |
-| Infrastructure as Code   | Terraform                          |
-| Configuration Management | Ansible                            |
-| Cloud Provider           | AWS (VPC, EC2, ECR, S3, SSM)       |
-| Containerization         | Docker, Docker Compose             |
-| Monitoring               | Prometheus, Grafana, Node Exporter |
-| DNS & CDN                | Cloudflare (DNS, Tunnel)           |
-| CI/CD                    | GitHub Actions                     |
-| Version Control          | Git, GitHub                        |
-| Operating System         | Ubuntu 24.04 LTS                   |
+## 🛠️ Technologies Used
 
+| Category | Tools |
+|----------|-------|
+| **Infrastructure as Code** | Terraform |
+| **Configuration Management** | Ansible |
+| **Cloud Provider** | AWS (VPC, EC2, ECR, S3, SSM) |
+| **Containerization** | Docker, Docker Compose |
+| **Monitoring** | Prometheus, Grafana, Node Exporter |
+| **DNS & CDN** | Cloudflare (DNS, Tunnel) |
+| **CI/CD** | GitHub Actions |
+| **Version Control** | Git, GitHub |
+| **Operating System** | Ubuntu 24.04 LTS |
 
-📁 Repository Structure
+---
+
+## 📁 Repository Structure
 
 devops-bootcamp-project/
 ├── .github/
@@ -372,16 +347,30 @@ devops-bootcamp-project/
 │   └── variables.tf            # Input variables
 └── README.md                   # This documentation
 
+---
 
-👨‍💻 Author
-Zaid Zahir
 
-GitHub: @z4id-27
+## 📝 Notes
 
-Project: DevOps Bootcamp 2025 Final Project
+- **Region**: All resources deployed in `ap-southeast-1` (Singapore)
+- **Terraform State**: Stored remotely in S3 bucket
+- **Monitoring Server**: Not publicly exposed (access via Cloudflare Tunnel only)
+- **SSL/TLS**: Cloudflare Flexible mode enabled
 
-📄 License
+---
+
+## 👨‍💻 Author
+
+**Zaid Zahir**
+
+- GitHub: [@z4id-27](https://github.com/z4id-27)
+- Project: DevOps Bootcamp 2025 Final Project
+
+---
+
+## 📄 License
+
 This project is part of the DevOps Bootcamp final assessment.
 
 © 2026 Infratify & Inframesia Technologies
-```
+
