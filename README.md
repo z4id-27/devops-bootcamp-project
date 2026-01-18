@@ -36,7 +36,7 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 ---
 
 ## 🏗️ Architecture
-
+```
 ### Network Architecture
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -67,7 +67,7 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 ┌─────▼─────┐
 │ Internet │
 └───────────┘
-
+```
 
 ### Component Overview
 
@@ -134,6 +134,8 @@ This project demonstrates a complete DevOps infrastructure deployment on AWS, im
 
 [monitoring]
 10.0.0.136
+```
+
 
 3. Containerized Services
 Web Application
@@ -382,3 +384,4 @@ Project: DevOps Bootcamp 2025 Final Project
 This project is part of the DevOps Bootcamp final assessment.
 
 © 2026 Infratify & Inframesia Technologies
+```
